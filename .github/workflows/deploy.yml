@@ -1,0 +1,71 @@
+name: Deploy PHP Website with Database
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0' # Change this to your desired PHP version
+          extensions: mbstring, pdo, pdo_mysql # Add any required PHP extensions
+      - name: Composer install
+        run: composer install # If you're using Composer for dependency management
+      - name: Run PHP Unit Tests
+        run: phpunit # Adjust this to your testing framework
+      # Add any additional build steps here
+
+  # Deployment job
+  deploy:
+    environment:
+      name: production
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to Web Server
+        uses: easingthemes/ssh-deploy@v2
+        with:
+          server-ip: ${{ secrets.SERVER_IP }} # Set this secret in your repository's secrets
+          server-port: ${{ secrets.SERVER_PORT }} # Set this secret in your repository's secrets
+          server-username: ${{ secrets.SERVER_USERNAME }} # Set this secret in your repository's secrets
+          server-password: ${{ secrets.SERVER_PASSWORD }} # Set this secret in your repository's secrets
+          local-app-path: './' # Path to your built PHP files
+          remote-ssh-path: '/var/www/html' # Path where your PHP files will be deployed on the server
+      - name: Database Connection
+        run: |
+          echo '<?php
+          $host = "${{ secrets.sql108.infinityfree.com }}";
+          $username = "${{ secrets.if0_34858471 }}";
+          $password = "${{ secrets.8IifOfTHLCuXocO }}";
+          $dbname = "${{ secrets.if0_34858471_project }}";
+
+          $conn = new mysqli($host, $username, $password, $dbname);
+
+          if ($conn->connect_error) {
+            die("Connection failed: " . $conn->connect_error);
+          }
+          echo "Connected successfully";
+          ?>' > database_connection.php
